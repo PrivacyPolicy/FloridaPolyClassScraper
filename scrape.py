@@ -4,6 +4,7 @@ import pathlib
 import html5lib
 from bs4 import BeautifulSoup
 import pprint
+import json
 
 baseURL = 'https://cams.floridapoly.org/Student/'
 classDataList = {}
@@ -39,7 +40,8 @@ def timeObjFromStr(string):
         hour += 12
         if hour == 24 or hour == 12:
             hour -= 12
-    return type('obj', (object,), {'h': hour, 'm': minute})
+    # return type('obj', (object,), {'h': hour, 'm': minute})
+    return {'h': hour, 'm': minute}
 
 def to2Str(integer):
     if integer < 10:
@@ -119,10 +121,10 @@ def getClassesFromPage(page):
             except:
                 seatsTaken = 0
 
-            timeObj = type('obj', (object,), {
+            timeObj = {
                 'start': timeObjFromStr(start),
                 'end': timeObjFromStr(end)
-            })
+            }
 
             meetingObj = {
                 'professor': professor,
@@ -206,7 +208,9 @@ for i in range(2, numPages + 1):
     page = postPage(browser, 'cePortalOffering.asp', { u'page': uPage })
     getClassesFromPage(page)
 
-# pprint.PrettyPrinter(indent=2).pprint(classDataList)
-print("Success! Checkout output.json")
+print("Success! Check out output.json")
 
-# TODO write out to file
+pprint.PrettyPrinter(indent=2).pprint(classDataList)
+fileOut = open('output.json', 'w+')
+jsonData = json.dumps(classDataList, indent=4)
+fileOut.write(jsonData)
