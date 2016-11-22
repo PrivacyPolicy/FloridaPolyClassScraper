@@ -3,8 +3,10 @@ import mechanicalsoup
 import pathlib
 import html5lib
 from bs4 import BeautifulSoup
+import pprint
 
 baseURL = 'https://cams.floridapoly.org/Student/'
+classDataList = {}
 
 def getPage(browser, fileName):
     try:
@@ -29,44 +31,122 @@ def postPage(browser, fileName, params):
         page.soup = BeautifulSoup(page.content, 'html5lib')
     return page
 
+def timeObjFromStr(string):
+    hour = int(string.split(':')[0])
+    minute = int(string.split(':')[1].split(':')[0])
+    pm = (string[-2:] == "PM")
+    if pm:
+        hour += 12
+        if hour == 24 or hour == 12:
+            hour -= 12
+    return type('obj', (object,), {'h': hour, 'm': minute})
+
+def to2Str(integer):
+    if integer < 10:
+        return '0' + str(integer)
+    else:
+        return str(integer)
+
 def getClassesFromPage(page):
     soup = page.soup
     classes = soup.select('tr.courseInfo')
-    classDataList = {}
     for theClass in classes:
-        tds = theClass.find_all('td')
-
         # course number; solely for identification purposes
-        number = str(tds[0].contents[0]).strip()
+        a = theClass.find_all('td') # tds containing course info
+        b = str(a[0].contents[0]).strip() # number + section number
+        section = b[-2:]
+        number = b[:-2]
+
+        # professors = []
+        # rooms = []
 
         # get a list of meeting times
-        print(theClass)
-        print('\n\n\n --------------------- \n\n\n')
-        print(theClass.parent.contents[4])
-        print('\n\n\n --------------------- \n\n\n')
-        print(theClass.next_element.next_elements)
-        print('\n\n\n --------------------- \n\n\n')
-        meetingsContainer = theClass.next_element.next_element
-        meetingsElem = meetingsContainer.select('tr.headerRow')[0]
-        meetings = []
-        # print(meetingsContainer)
-        # print(meetingsElem)
-        # print(meetings)
         try:
-            while True:
-                meeting = meetingsElem.next_element
-                meetings.append(meeting.find_all('td')[1].text)
-        except AttributeError:
-            pass # ran out of class meetings
+            meetingsContainer = theClass.findNext('tr').findNext('tr')
+            meetingsTable = meetingsContainer.select('tbody')[0]
+            meetingElems = meetingsTable.contents
+        except IndexError:
+            # print('Failed at ' + str(classes) + ', ' + section + number)
+            continue # no meetings (e.g. Internship)
+        meetings = []
+        for i in range(2, len(meetingElems) - 1):
+            meeting = meetingElems[i]
+
+            try:
+                tds = meeting.find_all('td')
+            except AttributeError:
+                continue # porbably just a blank space
+
+            # professor
+            try:
+                professor = tds[1].text.strip()
+            except:
+                professor = ''
+            # building
+            try:
+                building = tds[2].text.split('-')[0].strip()
+            except:
+                building = ''
+            # room
+            try:
+                room = tds[2].text.split('-')[1].strip()
+            except:
+                room = ''
+            # days
+            try:
+                days = tds[3].text.strip()
+            except:
+                days = ''
+            # weekly 4
+            # start time
+            try:
+                start = tds[5].text.strip()
+            except:
+                start = '12:01:00 AM'
+            # end time
+            try:
+                end = tds[6].text.strip()
+            except:
+                end = '11:59:00 PM'
+            # total seats
+            try:
+                seatsMax = int(tds[7].text.strip())
+            except:
+                seatsMax = 0
+            # seats that are taken
+            try:
+                seatsTaken = int(tds[8].text.strip())
+            except:
+                seatsTaken = 0
+
+            timeObj = type('obj', (object,), {
+                'start': timeObjFromStr(start),
+                'end': timeObjFromStr(end)
+            })
+
+            meetingObj = {
+                'professor': professor,
+                'campus': '',
+                'building': building,
+                'room': room,
+                'days': days,
+                'time': timeObj
+            }
+            # print(to2Str(timeObj.start.h) + to2Str(timeObj.start.m) + '-' + to2Str(timeObj.end.h) + to2Str(timeObj.end.m))
+            meetings.append(meetingObj)
 
         # add this class' data to the list of class datas
+        # print(number + section)
         classData = {
-            'times': meetings}
+            'section': section,
+            'meetings': meetings,
+            'seatsMax': seatsMax,
+            'seatsLeft': seatsMax - seatsTaken
+            }
         try:
             classDataList[number].append(classData)
         except KeyError:
             classDataList[number] = [classData]
-    return classDataList
 
 browser = mechanicalsoup.Browser()
 
@@ -98,7 +178,7 @@ page2 = postPage(browser, 'ceProcess.asp', params)
 status = page2.soup.text.index('\'loginStatus\':\'true\'')
 assert(status > 0)
 
-print('Successfully signed in')
+print('Successfully signed in...')
 
 # verify we remain logged in (thanks to cookies) as we browse the rest of the site
 page3 = postPage(browser, 'cePortalOffering.asp', { u'page': u'1' })
@@ -117,16 +197,16 @@ assert(e > 0)
 
 numPages = e
 
-classes = getClassesFromPage(page3)
-print('1-----------------------------')
-print(str(classes).replace('},', '},\n'))
-print('-------------------------------\n')
+print('Page 1...')
+getClassesFromPage(page3)
 
-# for i in range(2, numPages + 1):
-if False:
+for i in range(2, numPages + 1):
     uPage = str(i)
+    print('Page ' + uPage + '...')
     page = postPage(browser, 'cePortalOffering.asp', { u'page': uPage })
-    classes = getClassesFromPage(page)
-    print(uPage + '-----------------------------')
-    print(str(classes).replace('},', '},\n'))
-    print('-------------------------------\n')
+    getClassesFromPage(page)
+
+# pprint.PrettyPrinter(indent=2).pprint(classDataList)
+print("Success! Checkout output.json")
+
+# TODO write out to file
