@@ -210,7 +210,7 @@ for i in range(2, numPages + 1):
 
 print("Success! Check out output.json")
 
-pprint.PrettyPrinter(indent=2).pprint(classDataList)
+# pprint.PrettyPrinter(indent=2).pprint(classDataList)
 fileOut = open('output.json', 'w+')
 jsonData = json.dumps(classDataList, indent=4)
 fileOut.write(jsonData)
