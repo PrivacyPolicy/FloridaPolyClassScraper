@@ -1,7 +1,6 @@
-import argparse
 import mechanicalsoup
 import pathlib
-import html5lib
+import lxml
 from bs4 import BeautifulSoup
 import pprint
 import json
@@ -15,7 +14,7 @@ def getPage(browser, fileName):
     except:
         page = type('obj', (object,), {'content': '', 'soup': ''})
         page.content = open('_cache/' + fileName + '.html', 'r').read()
-        page.soup = BeautifulSoup(page.content, 'html5lib')
+        page.soup = BeautifulSoup(page.content, 'lxml')
     return page
 
 def postPage(browser, fileName, params):
@@ -29,7 +28,7 @@ def postPage(browser, fileName, params):
         page = type('obj', (object,), {'content': '', 'soup': ''})
         url = '_cache/' + fileName + addToURL + '.html'
         page.content = open(url, 'r').read()
-        page.soup = BeautifulSoup(page.content, 'html5lib')
+        page.soup = BeautifulSoup(page.content, 'lxml')
     return page
 
 def timeObjFromStr(string):
@@ -64,11 +63,10 @@ def getClassesFromPage(page):
 
         # get a list of meeting times
         try:
-            meetingsContainer = theClass.findNext('tr').findNext('tr')
-            meetingsTable = meetingsContainer.select('tbody')[0]
+            meetingsTable = theClass.parent.select('table.Portal_Group_Table')[0]
             meetingElems = meetingsTable.contents
         except IndexError:
-            # print('Failed at ' + str(classes) + ', ' + section + number)
+            # print('b:\nFailed at ' + str(classes) + ', ' + section + number)
             continue # no meetings (e.g. Internship)
         meetings = []
         for i in range(2, len(meetingElems) - 1):

@@ -82,6 +82,6 @@ When finished, the data is saved in `output.json`
 ## Dependencies
 * [MechanicalSoup](https://www.github.com/hickford/MechanicalSoup)
 * [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/)
-* [html5lib](https://pypi.python.org/pypi/html5lib)
+* [lxml](http://lxml.de/)
 
 ([How to install python packages](https://packaging.python.org/installing/))
